@@ -213,6 +213,13 @@ Object.assign(VG_TRANSLATIONS.fr, {"false-report": "Vous avez fait un faux signa
 Object.assign(VG_TRANSLATIONS.de, {"false-report": "Falsche Meldung oder ein Fehler? Schreib an <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> und wir entfernen sie."});
 Object.assign(VG_TRANSLATIONS.it, {"false-report": "Hai fatto una segnalazione falsa o un errore? Scrivi a <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> e la rimuoveremo."});
 
+
+// Police email messages
+Object.assign(VG_TRANSLATIONS.en, {"open-gmail": "Open Gmail draft", "open-other-mail": "Open in another email app", "msg-email-no-address": "Your email is pre-filled, but the {canton} police do not publish an email address for theft reports, so the recipient is empty. Use their official online form below, or add an address yourself.", "msg-email-no-canton": "Your email is pre-filled, but we could not detect the canton, so the recipient is empty. Check the official Swiss police page below for the right contact."});
+Object.assign(VG_TRANSLATIONS.fr, {"open-gmail": "Ouvrir le brouillon Gmail", "open-other-mail": "Ouvrir dans une autre messagerie", "msg-email-no-address": "Votre e-mail est prérempli, mais la police de {canton} ne publie pas d’adresse e-mail pour les vols : le destinataire est vide. Utilisez son formulaire officiel ci-dessous ou ajoutez une adresse vous-même.", "msg-email-no-canton": "Votre e-mail est prérempli, mais le canton n’a pas pu être détecté : le destinataire est vide. Consultez la page officielle de la police suisse ci-dessous."});
+Object.assign(VG_TRANSLATIONS.de, {"open-gmail": "Gmail-Entwurf öffnen", "open-other-mail": "In anderer E-Mail-App öffnen", "msg-email-no-address": "Deine E-Mail ist vorausgefüllt, aber die Polizei {canton} veröffentlicht keine E-Mail-Adresse für Diebstahlmeldungen, daher ist der Empfänger leer. Nutze das offizielle Online-Formular unten oder trage selbst eine Adresse ein.", "msg-email-no-canton": "Deine E-Mail ist vorausgefüllt, aber der Kanton konnte nicht erkannt werden, daher ist der Empfänger leer. Prüfe unten die offizielle Seite der Schweizer Polizei."});
+Object.assign(VG_TRANSLATIONS.it, {"open-gmail": "Apri bozza Gmail", "open-other-mail": "Apri in un’altra app e-mail", "msg-email-no-address": "La tua e-mail è precompilata, ma la polizia di {canton} non pubblica un indirizzo e-mail per i furti, quindi il destinatario è vuoto. Usa il modulo ufficiale qui sotto o aggiungi tu un indirizzo.", "msg-email-no-canton": "La tua e-mail è precompilata, ma non è stato possibile rilevare il cantone, quindi il destinatario è vuoto. Consulta la pagina ufficiale della polizia svizzera qui sotto."});
+
 function vgLanguage() { try { return localStorage.getItem('vgLanguage') || document.documentElement.lang || 'en'; } catch (_) { return document.documentElement.lang || 'en'; } }
 function vgT(key) { const lang = vgLanguage(); return (VG_TRANSLATIONS[lang] && VG_TRANSLATIONS[lang][key]) || VG_TRANSLATIONS.en[key] || key; }
 function vgApplyLanguage(lang) {
@@ -489,7 +496,42 @@ mapButton.addEventListener('click', async () => {
  mapButton.textContent = vgT('add-to-map');
 });
 
-// ---------- Button 2: "Prepare police email" (Gmail draft only, not saved to the map) ----------
+// ---------- Work out the canton for a point ----------
+const CANTON_CODES = {AG:'Aargau',AI:'Appenzell Innerrhoden',AR:'Appenzell Ausserrhoden',BE:'Bern',BL:'Basel-Landschaft',BS:'Basel-Stadt',FR:'Fribourg',GE:'Geneva',GL:'Glarus',GR:'Graubünden',JU:'Jura',LU:'Lucerne',NE:'Neuchâtel',NW:'Nidwalden',OW:'Obwalden',SG:'St. Gallen',SH:'Schaffhausen',SO:'Solothurn',SZ:'Schwyz',TG:'Thurgau',TI:'Ticino',UR:'Uri',VD:'Vaud',VS:'Valais',ZG:'Zug',ZH:'Zürich'};
+
+// 1st choice: the official Swiss federal map service (swisstopo) – very accurate for canton borders
+async function cantonFromSwissApi(lat, lng) {
+ const url = 'https://api3.geo.admin.ch/rest/services/api/MapServer/identify?geometryType=esriGeometryPoint' +
+   '&geometry=' + encodeURIComponent(lng + ',' + lat) + '&sr=4326' +
+   '&layers=all:ch.swisstopo.swissboundaries3d-kanton-flaeche.fill&tolerance=0&returnGeometry=false';
+ const response = await fetch(url);
+ if (!response.ok) throw new Error('swisstopo lookup failed');
+ const data = await response.json();
+ const attrs = (data.results && data.results[0] && data.results[0].attributes) || {};
+ const code = String(attrs.ak || '').toUpperCase();
+ if (CANTON_CODES[code]) return CANTON_CODES[code];
+ const name = attrs.name || attrs.label || attrs.kantonsname;
+ return name ? normalizeCanton({ state: String(name) }) : null;
+}
+
+// 2nd choice: OpenStreetMap – also gives us a street / town name for the email
+async function placeFromOpenStreetMap(lat, lng) {
+ const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng);
+ const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+ if (!response.ok) throw new Error('OpenStreetMap lookup failed');
+ const geo = await response.json();
+ const address = geo.address || {};
+ return {
+   canton: normalizeCanton(address),
+   placeLabel: [address.road, address.suburb || address.neighbourhood, address.city || address.town || address.village || address.municipality].filter(Boolean).join(', ')
+ };
+}
+
+function buildMailtoUrl(to, subject, body) {
+ return 'mailto:' + encodeURIComponent(to || '') + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+// ---------- Button 2: "Prepare police email" (pre-filled email to the right cantonal police) ----------
 submitButton.addEventListener('click', async () => {
  if (!hasValidLocation() || !validateFor('police')) return;
 
@@ -500,44 +542,53 @@ submitButton.addEventListener('click', async () => {
  status.style.display = 'block';
  status.textContent = vgT('msg-finding-canton');
 
+ const lat = latitudeField.value, lng = longitudeField.value;
  const generalPoliceGuidance = 'https://www.ch.ch/fr/securite-et-droit/police/porter-plainte';
 
  try {
-   // 1. Work out the canton from the coordinates
-   const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + encodeURIComponent(latitudeField.value) + '&lon=' + encodeURIComponent(longitudeField.value);
-   const response = await fetch(url, {headers:{'Accept':'application/json'}});
-   if (!response.ok) throw new Error('Location lookup failed');
-   const geo = await response.json();
-   const address = geo.address || {};
-   const canton = normalizeCanton(address);
-   const placeLabel = [address.road, address.suburb || address.neighbourhood, address.city || address.town || address.village || address.municipality].filter(Boolean).join(', ') || latitudeField.value + ', ' + longitudeField.value;
+   // 1. Find the canton (two services, so one can fail)
+   let canton = null, placeLabel = '';
+   try { canton = await cantonFromSwissApi(lat, lng); } catch (err) { console.warn(err); }
+   try {
+     const place = await placeFromOpenStreetMap(lat, lng);
+     placeLabel = place.placeLabel;
+     if (!canton) canton = place.canton;
+   } catch (err) { console.warn(err); }
+   if (!placeLabel) placeLabel = lat + ', ' + lng;
 
-   if (!canton || !cantonContacts[canton]) {
-     if (emailTab && !emailTab.closed) { emailTab.location.href = generalPoliceGuidance; emailTab.opener = null; }
-     status.innerHTML = vgT('msg-no-canton') + '<br>' +
-       '<a class="draft-link" href="' + generalPoliceGuidance + '" target="_blank" rel="noopener">' + vgT('official-swiss-police-link') + '</a>';
-     return;
-   }
+   // 2. Pick the police email for that canton
+   const contact = canton ? cantonContacts[canton] : null;
+   const recipient = (contact && contact.email) || '';
 
-   // 2. Some cantons have no email address: open their official page instead
-   const contact = cantonContacts[canton];
-   if (!contact.email) {
-     const officialUrl = contact.reportUrl || contact.url || generalPoliceGuidance;
-     if (emailTab && !emailTab.closed) { emailTab.location.href = officialUrl; emailTab.opener = null; }
-     status.innerHTML = vgT('msg-no-direct-email') + '<br>' +
-       '<a class="draft-link" href="' + officialUrl + '" target="_blank" rel="noopener">' + vgT('official-reporting-link') + '</a>';
-     return;
-   }
+   // 3. Build the pre-filled email and open it in Gmail
+   const subjectLabels = { en: 'Stolen', fr: 'Vol de', de: 'Diebstahl:', it: 'Furto di' };
+   const subject = (subjectLabels[vgLanguage()] || subjectLabels.en) + ' ' +
+     vgT(vehicleKeys[fieldValue('vehicle')] || 'option-other') + (canton ? ' – ' + canton : '');
+   const body = composeBody(canton || '—', placeLabel);
+   const gmailUrl = buildGmailDraftUrl(recipient, subject, body);
+   const mailtoUrl = buildMailtoUrl(recipient, subject, body);
 
-   // 3. Open the Gmail draft
-   const subjectLabels = {en:'Stolen',fr:'Vol de',de:'Diebstahl:',it:'Furto di'};
-   const subject = (subjectLabels[vgLanguage()] || subjectLabels.en) + ' ' + vgT(vehicleKeys[fieldValue('vehicle')] || 'option-other') + ' – ' + canton;
-   const body = composeBody(canton, placeLabel);
-   const gmailUrl = buildGmailDraftUrl(contact.email, subject, body);
    if (emailTab && !emailTab.closed) { emailTab.location.href = gmailUrl; emailTab.opener = null; }
-   status.innerHTML = vgT('msg-email-ready') + '<br><strong>' + vgT('msg-email-recipient') + '</strong> ' + contact.email +
-     '<br><a class="draft-link" href="' + gmailUrl + '" target="_blank" rel="noopener">Open Gmail draft</a>';
+
+   const links = '<br><a class="draft-link" href="' + gmailUrl + '" target="_blank" rel="noopener">' + vgT('open-gmail') + '</a>' +
+     ' &nbsp;·&nbsp; <a class="draft-link" href="' + mailtoUrl + '">' + vgT('open-other-mail') + '</a>';
+
+   if (recipient) {
+     // Normal case: email address known
+     status.innerHTML = vgT('msg-email-ready') + '<br><strong>' + vgT('msg-email-recipient') + '</strong> ' +
+       recipient + ' (' + canton + ')' + links;
+   } else if (canton) {
+     // Canton found, but its police do not take reports by email (e.g. Geneva, Fribourg)
+     const officialUrl = (contact && (contact.reportUrl || contact.url)) || generalPoliceGuidance;
+     status.innerHTML = vgT('msg-email-no-address').replace('{canton}', canton) + links +
+       '<br><a class="draft-link" href="' + officialUrl + '" target="_blank" rel="noopener">' + vgT('official-reporting-link') + '</a>';
+   } else {
+     // Canton could not be found at all
+     status.innerHTML = vgT('msg-email-no-canton') + links +
+       '<br><a class="draft-link" href="' + generalPoliceGuidance + '" target="_blank" rel="noopener">' + vgT('official-swiss-police-link') + '</a>';
+   }
  } catch (error) {
+   console.error(error);
    if (emailTab && !emailTab.closed) { emailTab.location.href = generalPoliceGuidance; emailTab.opener = null; }
    status.innerHTML = vgT('msg-lookup-error') + '<br>' +
      '<a class="draft-link" href="' + generalPoliceGuidance + '" target="_blank" rel="noopener">' + vgT('official-swiss-police-link') + '</a>';
