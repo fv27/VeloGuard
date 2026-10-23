@@ -39,6 +39,9 @@ form{background:var(--panel);border:1px solid #2b2b2b;border-radius:16px;padding
 .button.map-add{background:#1f8f4e}
 .actions-note{max-width:620px;margin:16px auto 0;color:#bbb;font-size:13px;line-height:1.7;text-align:center}
 .actions-note strong{color:#fff}
+.canton-note{max-width:620px;margin:14px auto 0;padding:12px 14px;background:#2a2108;border:1px solid #6b5412;border-radius:8px;color:#f3dfa0;font-size:13px;line-height:1.6;text-align:center}
+.canton-note strong{color:#ffd65c}
+.canton-note a{color:#ffd65c;font-weight:bold}
 
 .false-report{margin:10px auto 0;max-width:760px;font-size:12px;line-height:1.6;color:#8d8d8d;text-align:center}
 .false-report a{color:#ff7777;font-weight:bold;word-break:break-all}
@@ -89,6 +92,7 @@ form{background:var(--panel);border:1px solid #2b2b2b;border-radius:16px;padding
  <a class="button secondary" id="choose-location-link" href="map.html?returnToReport=1" data-i18n="change-location">CHANGE LOCATION ON MAP</a>
 </div>
 <p class="actions-note" data-i18n="actions-note"><strong>Add to VeloGuard map:</strong> shares the location anonymously so the community can see risky areas. <strong>Police email:</strong> opens a Gmail draft you review and send yourself. You can do one or both.</p>
+<p class="canton-note" data-i18n="canton-note">⚠️ <strong>The automatic police email does not work for Geneva or Fribourg.</strong> Their police do not accept theft reports by email. Please use their official online pages instead: <a href="https://preplainte.app.ge.ch/" target="_blank" rel="noopener">Geneva</a> · <a href="https://www.fr.ch/dsjs/pol/contact" target="_blank" rel="noopener">Fribourg</a>.</p>
 <p class="draft-note" data-i18n="draft-note">Your draft details are kept in this browser while you choose a map location.</p>
 <div id="status" role="status"></div>
 </form>
@@ -219,6 +223,13 @@ Object.assign(VG_TRANSLATIONS.en, {"open-gmail": "Open Gmail draft", "open-other
 Object.assign(VG_TRANSLATIONS.fr, {"open-gmail": "Ouvrir le brouillon Gmail", "open-other-mail": "Ouvrir dans une autre messagerie", "msg-email-no-address": "Votre e-mail est prérempli, mais la police de {canton} ne publie pas d’adresse e-mail pour les vols : le destinataire est vide. Utilisez son formulaire officiel ci-dessous ou ajoutez une adresse vous-même.", "msg-email-no-canton": "Votre e-mail est prérempli, mais le canton n’a pas pu être détecté : le destinataire est vide. Consultez la page officielle de la police suisse ci-dessous."});
 Object.assign(VG_TRANSLATIONS.de, {"open-gmail": "Gmail-Entwurf öffnen", "open-other-mail": "In anderer E-Mail-App öffnen", "msg-email-no-address": "Deine E-Mail ist vorausgefüllt, aber die Polizei {canton} veröffentlicht keine E-Mail-Adresse für Diebstahlmeldungen, daher ist der Empfänger leer. Nutze das offizielle Online-Formular unten oder trage selbst eine Adresse ein.", "msg-email-no-canton": "Deine E-Mail ist vorausgefüllt, aber der Kanton konnte nicht erkannt werden, daher ist der Empfänger leer. Prüfe unten die offizielle Seite der Schweizer Polizei."});
 Object.assign(VG_TRANSLATIONS.it, {"open-gmail": "Apri bozza Gmail", "open-other-mail": "Apri in un’altra app e-mail", "msg-email-no-address": "La tua e-mail è precompilata, ma la polizia di {canton} non pubblica un indirizzo e-mail per i furti, quindi il destinatario è vuoto. Usa il modulo ufficiale qui sotto o aggiungi tu un indirizzo.", "msg-email-no-canton": "La tua e-mail è precompilata, ma non è stato possibile rilevare il cantone, quindi il destinatario è vuoto. Consulta la pagina ufficiale della polizia svizzera qui sotto."});
+
+
+// Warning: no police email in Geneva / Fribourg
+Object.assign(VG_TRANSLATIONS.en, {"canton-note": "⚠️ <strong>The automatic police email does not work for Geneva or Fribourg.</strong> Their police do not accept theft reports by email. Please use their official online pages instead: <a href=\"https://preplainte.app.ge.ch/\" target=\"_blank\" rel=\"noopener\">Geneva</a> · <a href=\"https://www.fr.ch/dsjs/pol/contact\" target=\"_blank\" rel=\"noopener\">Fribourg</a>."});
+Object.assign(VG_TRANSLATIONS.fr, {"canton-note": "⚠️ <strong>L’e-mail automatique à la police ne fonctionne pas pour Genève ni Fribourg.</strong> Leur police n’accepte pas les signalements de vol par e-mail. Utilisez plutôt leurs pages officielles : <a href=\"https://preplainte.app.ge.ch/\" target=\"_blank\" rel=\"noopener\">Genève</a> · <a href=\"https://www.fr.ch/dsjs/pol/contact\" target=\"_blank\" rel=\"noopener\">Fribourg</a>."});
+Object.assign(VG_TRANSLATIONS.de, {"canton-note": "⚠️ <strong>Die automatische Polizei-E-Mail funktioniert nicht für Genf und Freiburg.</strong> Die dortige Polizei nimmt keine Diebstahlmeldungen per E-Mail an. Bitte nutze stattdessen ihre offiziellen Seiten: <a href=\"https://preplainte.app.ge.ch/\" target=\"_blank\" rel=\"noopener\">Genf</a> · <a href=\"https://www.fr.ch/dsjs/pol/contact\" target=\"_blank\" rel=\"noopener\">Freiburg</a>."});
+Object.assign(VG_TRANSLATIONS.it, {"canton-note": "⚠️ <strong>L’e-mail automatica alla polizia non funziona per Ginevra e Friburgo.</strong> La loro polizia non accetta segnalazioni di furto via e-mail. Usa invece le loro pagine ufficiali: <a href=\"https://preplainte.app.ge.ch/\" target=\"_blank\" rel=\"noopener\">Ginevra</a> · <a href=\"https://www.fr.ch/dsjs/pol/contact\" target=\"_blank\" rel=\"noopener\">Friburgo</a>."});
 
 function vgLanguage() { try { return localStorage.getItem('vgLanguage') || document.documentElement.lang || 'en'; } catch (_) { return document.documentElement.lang || 'en'; } }
 function vgT(key) { const lang = vgLanguage(); return (VG_TRANSLATIONS[lang] && VG_TRANSLATIONS[lang][key]) || VG_TRANSLATIONS.en[key] || key; }
