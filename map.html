@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bike Parking Map | Velo-Guard</title>
+    <meta name="description" content="Find mapped bicycle parking across Switzerland.">
+    
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Special+Gothic+Expanded+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+
+    <style>
+        :root {
+            --red: #ff2020;
+            --red-dark: #c90000;
+            --black: #080808;
+            --panel: #151515;
+            --white: #f7f7f7;
+            --muted: #a5a5a5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--black);
+            color: var(--white);
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        nav,
+        .map-button {
+            font-family: "Special Gothic Expanded One", sans-serif;
+        }
+
+        nav {
+            width: fit-content;
+            max-width: calc(100% - 28px);
+            margin: 28px auto 0;
+            position: relative;
+            z-index: 1000;
+        }
+
+        nav ul {
+            display: flex;
+            flex-wrap: wrap;
+            list-style: none;
+            margin: 0;
+            padding: 6px;
+            gap: 6px;
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 12px;
+        }
+
+        nav li {
+            position: relative;
+        }
+
+        nav li a {
+            display: block;
+            padding: 13px 18px;
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            border-radius: 7px;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        nav li a:hover,
+        nav li a:focus {
+            background: var(--red);
+            color: white;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 0;
+            min-width: 190px;
+            padding: 6px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+            z-index: 1001;
+        }
+
+        .dropdown-content a {
+            color: #111;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .dropdown-content a:hover,
+        .dropdown-content a:focus {
+            background: var(--red);
+            color: white;
+        }
+
+        .dropdown:hover .dropdown-content,
+        .dropdown:focus-within .dropdown-content {
+            display: block;
+        }
+
+        .page-title {
+            margin: 42px 16px 24px;
+            color: var(--red);
+            text-align: center;
+            font-size: clamp(44px, 9vw, 100px);
+            line-height: 1.15;
+            letter-spacing: 1px;
+            text-shadow: 0 0 24px rgba(255, 32, 32, 0.18);
+        }
+
+        .section-title {
+            margin: 0 20px 18px;
+            text-align: center;
+            font-size: clamp(16px, 2.5vw, 23px);
+            line-height: 1.5;
+        }
+
+        .map-instructions {
+            max-width: 650px;
+            margin: 0 auto 28px;
+            padding: 0 20px;
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        #bike-map {
+            width: min(1120px, calc(100% - 36px));
+            height: min(68vh, 680px);
+            min-height: 420px;
+            margin: 0 auto 70px;
+            overflow: hidden;
+            background: #222;
+            border: 1px solid #343434;
+            border-radius: 16px;
+            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.35);
+        }
+
+        .map-button {
+            display: block;
+            width: fit-content;
+            margin: 0 auto 45px;
+            padding: 14px 20px;
+            background: var(--red);
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .map-button:hover {
+            background: var(--red-dark);
+            transform: translateY(-2px);
+        }
+
+        .map-tools { display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; margin:0 auto 18px; padding:0 18px; }
+        .map-tools .map-button { margin:0; border:0; cursor:pointer; }
+        .map-tools .tool-button { font-size:12px; }
+        #map-status { flex-basis:100%; color:var(--muted); text-align:center; font-size:13px; line-height:1.5; }
+        .parking-marker { background:#ff2020; border:2px solid white; border-radius:50%; width:14px; height:14px; box-shadow:0 1px 5px #0009; }
+        .user-marker { background:#1677ff; border:3px solid white; border-radius:50%; width:18px; height:18px; box-shadow:0 0 0 7px #1677ff33; }
+
+        footer {
+            padding: 26px 16px;
+            color: #777;
+            text-align: center;
+            font-size: 12px;
+            border-top: 1px solid #202020;
+        }
+
+        .leaflet-popup-content {
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+        }
+
+        .leaflet-popup-content a {
+            color: #c00;
+            font-weight: bold;
+        }
+
+        @media (max-width: 600px) {
+            nav {
+                margin-top: 18px;
+            }
+
+            nav li a {
+                padding: 11px 13px;
+                font-size: 11px;
+            }
+
+            .page-title {
+                margin-top: 65px;
+                margin-bottom: 24px;
+            }
+
+            #bike-map {
+                width: calc(100% - 24px);
+                min-height: 380px;
+                height: 58vh;
+                border-radius: 12px;
+                margin-bottom: 48px;
+            }
+        }
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+    
+
+        .vg-header {
+            width: 100%;
+            min-height: 78px;
+            margin: 0;
+            padding: 0;
+            background: #090909;
+            border-bottom: 1px solid #292929;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .vg-header-inner {
+            width: min(1100px, calc(100% - 40px));
+            min-height: 78px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .vg-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+            text-decoration: none;
+            color: #f5f5f5;
+            font-family: "Special Gothic Expanded One", Impact, sans-serif;
+            font-size: 17px;
+            letter-spacing: 1px;
+        }
+
+        .vg-brand-mark {
+            width: 35px;
+            height: 35px;
+            display: grid;
+            place-items: center;
+            border: 2px solid var(--red);
+            color: var(--red);
+            font-size: 17px;
+            transform: skew(-5deg);
+        }
+
+        .vg-header nav.vg-links {
+            width: auto;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            position: static;
+            z-index: auto;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 16px;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .lang-header-slot { display:flex; align-items:center; }
+        .vg-header nav.vg-links ul {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            gap: 20px;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+        }
+
+        .vg-header nav.vg-links li { position: static; }
+
+        .vg-header nav.vg-links a {
+            display: block;
+            padding: 10px 0;
+            color: #b4b4b4;
+            background: transparent;
+            text-decoration: none;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            border-radius: 0;
+            white-space: nowrap;
+            transition: color 0.2s ease;
+        }
+
+        .vg-header nav.vg-links a:hover,
+        .vg-header nav.vg-links a:focus {
+            color: #fff;
+            background: transparent;
+        }
+
+        @media (max-width: 600px) {
+            .vg-header-inner { width: calc(100% - 28px); gap: 12px; }
+            .vg-brand { gap: 8px; font-size: 13px; }
+            .vg-brand-mark { width: 30px; height: 30px; font-size: 15px; }
+            .vg-header nav.vg-links ul { gap: 11px; }
+            .vg-header nav.vg-links a { font-size: 10px; }
+        }
+
+
+    .language-select {
+      background: #141414; color: #f5f5f5; border: 1px solid #444;
+      border-radius: 5px; padding: 8px 9px; font-size: 12px; max-width: 100%;
+    }
+    .lang-wrap { display:flex; align-items:center; gap:7px; }
+    .lang-label { color:#aaa; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+    @media (max-width:700px) { .language-select { padding:7px 5px; font-size:11px; } }
+
+        .map-search { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center; width:100%; }
+        .map-search input { min-width:240px; width:min(420px, 90vw); padding:13px 14px; border:1px solid #555; border-radius:8px; color:#111; background:#f7f7f7; font-size:14px; }
+        .map-search button { margin:0; border:0; cursor:pointer; }
+    </style>
+</head>
+
+<body id="home">
+    <header class="vg-header">
+        <div class="vg-header-inner">
+            <a class="vg-brand" href="index.html" aria-label="Velo-Guard home">
+                <span class="vg-brand-mark" aria-hidden="true">V</span>
+                <span>VELO-GUARD</span>
+            </a>
+            <nav class="vg-links" aria-label="Main navigation">
+                <ul>
+                    <li><a href="index.html" data-i18n="nav-home">HOME</a></li>
+                    <li><a href="map.html" data-i18n="nav-map">MAP</a></li>
+                    <li><a href="report.html" data-i18n="nav-report">REPORT THEFT</a></li>
+                </ul>
+                <div class="lang-header-slot"><label class="lang-wrap"><span class="lang-label" data-i18n="language">LANGUAGE</span><select class="language-select" id="language-select" aria-label="Language"><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option></select></label></div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <h1 class="page-title" data-i18n="map-title">BIKE PARKING MAP</h1>
+        <div class="map-tools" aria-label="Map tools">
+            <div class="map-search">
+                <input id="place-search" type="search" autocomplete="postal-code" data-i18n-placeholder="search-placeholder" placeholder="Enter a Swiss town or postcode (e.g. Cologny or 1223)">
+                <button type="button" class="map-button tool-button" id="search-button" data-i18n="search-button">SEARCH PLACE</button>
+            </div>
+            <button type="button" class="map-button tool-button" id="locate-button" data-i18n="locate-button">📍 FIND MY LOCATION</button>
+            <button type="button" class="map-button tool-button" id="parking-button" data-i18n="parking-button">🚲 HIDE BIKE PARKING</button>
+            <span id="map-status" role="status" aria-live="polite"></span>
+        </div>
+        <div id="bike-map" aria-label="Map of bicycle parking and report locations"></div>
+    </main>
+
+    <footer data-i18n="map-footer">Velo-Guard · Switzerland</footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+      try { localStorage.removeItem("vgCommunityReports"); } catch (_) {}
+      const map = L.map("bike-map").setView([46.8182, 8.2275], 8);
+      const switzerlandBounds = L.latLngBounds([45.70, 5.80], [47.95, 10.60]);
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { attribution: "Tiles &copy; Esri", maxZoom: 19 }).addTo(map);
+      const parkingLayer = L.layerGroup().addTo(map);
+      const parkingIcon = L.divIcon({className:"", html:'<div class="parking-marker"></div>', iconSize:[14,14], iconAnchor:[7,7]});
+      const userIcon = L.divIcon({className:"", html:'<div class="user-marker"></div>', iconSize:[18,18], iconAnchor:[9,9]});
+      let userMarker = null, reportPin = null, parkingVisible = true, lastParkingRequest = "", parkingRequestInProgress = false;
+      const mapStatus = document.getElementById("map-status");
+      function setStatus(message) { mapStatus.textContent = message; }
+      function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]); }
+      async function checkWaterLocation(lat, lng) {
+        const latitude = Number(lat), longitude = Number(lng);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error('Invalid coordinates');
+        const query = '[out:json][timeout:12];is_in(' + latitude.toFixed(6) + ',' + longitude.toFixed(6) + ');out tags;nwr(around:2,' + latitude.toFixed(6) + ',' + longitude.toFixed(6) + ')["waterway"~"^(river|stream|canal|ditch|drain|riverbank)$"];out tags;nwr(around:2,' + latitude.toFixed(6) + ',' + longitude.toFixed(6) + ')["natural"~"^(water|bay|sea|coastline)$"];out tags;';
+        const response = await fetch('https://overpass.osm.ch/api/interpreter?data=' + encodeURIComponent(query), {cache:'no-store'});
+        if (!response.ok) throw new Error('Water-map lookup unavailable');
+        const payload = await response.json();
+        const waterValues = new Set(['lake','pond','reservoir','basin','lagoon','oxbow','river','stream','canal','riverbank','sea','bay','strait']);
+        return (payload.elements || []).some(element => {
+          const tags = element.tags || {};
+          return tags.natural === 'water' || tags.natural === 'bay' || tags.natural === 'sea' || tags.natural === 'coastline' ||
+            tags.landuse === 'reservoir' || tags.waterway === 'riverbank' ||
+            waterValues.has(String(tags.water || '').toLowerCase()) ||
+            ['river','stream','canal','ditch','drain','riverbank'].includes(String(tags.waterway || '').toLowerCase()) ||
+            tags.place === 'sea';
+        });
+      }
+
+      function popupContent(lat, lng) {
+        const url = "report.html?lat=" + encodeURIComponent(lat.toFixed(6)) + "&lng=" + encodeURIComponent(lng.toFixed(6));
+        return '<strong>' + escapeHtml(vgT('msg-map-pick')) + '</strong><br>' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '<br><a href="' + url + '">' + escapeHtml(vgT('msg-report-at-location')) + '</a>';
+      }
+      async function loadBikeParking(force = false) {
+        if (!parkingVisible || parkingRequestInProgress || map.getZoom() < 10) {
+          if (map.getZoom() < 10) setStatus(vgT('msg-zoom'));
+          return;
+        }
+        const b = map.getBounds();
+        const bbox = [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map(n => n.toFixed(3)).join(",");
+        if (!force && bbox === lastParkingRequest) return;
+        lastParkingRequest = bbox; parkingRequestInProgress = true; setStatus(vgT('msg-loading-parking'));
+        const query = '[out:json][timeout:25];(node["amenity"="bicycle_parking"](' + bbox + ');way["amenity"="bicycle_parking"](' + bbox + '););out center tags;';
+        try {
+          const response = await fetch("https://overpass.osm.ch/api/interpreter?data=" + encodeURIComponent(query));
+          if (!response.ok) throw new Error('parking unavailable');
+          const data = await response.json(); parkingLayer.clearLayers(); let count = 0;
+          (data.elements || []).forEach(item => {
+            const lat = item.lat ?? item.center?.lat, lng = item.lon ?? item.center?.lon;
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            const tags = item.tags || {}, name = tags.name || tags.operator || 'Bike parking';
+            const details = [tags.capacity ? 'Capacity: ' + tags.capacity : '', tags.covered === 'yes' ? 'Covered parking' : '', tags.bicycle_parking ? 'Type: ' + tags.bicycle_parking.replaceAll('_', ' ') : ''].filter(Boolean).join(' · ');
+            const reportUrl = 'report.html?lat=' + encodeURIComponent(lat.toFixed(6)) + '&lng=' + encodeURIComponent(lng.toFixed(6));
+            L.marker([lat,lng], {icon:parkingIcon}).bindPopup('<strong>' + escapeHtml(name) + '</strong><br>Bike parking' + (details ? '<br>' + escapeHtml(details) : '') + '<br><a href="' + reportUrl + '">' + escapeHtml(vgT('msg-report-at-location')) + '</a>').addTo(parkingLayer); count++;
+          });
+          setStatus(vgT('msg-parking-count').replace('{count}', count));
+        } catch (_) { lastParkingRequest = ''; setStatus(vgT('msg-parking-failed')); }
+        finally { parkingRequestInProgress = false; }
+      }
+      let checkingReportLocation = false;
+      map.on('click', async event => {
+        if (checkingReportLocation) return;
+        checkingReportLocation = true;
+        const lat = event.latlng.lat, lng = event.latlng.lng;
+        setStatus(vgT('msg-water-checking'));
+        try {
+          if (await checkWaterLocation(lat, lng)) {
+            setStatus(vgT('msg-water-blocked'));
+            return;
+          }
+          if (reportPin) reportPin.setLatLng(event.latlng);
+          else reportPin = L.marker(event.latlng, {draggable:false, title:'Chosen report location'}).addTo(map);
+          reportPin.bindPopup(popupContent(lat, lng)).openPopup();
+          setStatus(vgT('msg-map-pick') + ': ' + lat.toFixed(5) + ', ' + lng.toFixed(5));
+        } catch (_) {
+          setStatus(vgT('msg-water-check-failed'));
+        } finally {
+          checkingReportLocation = false;
+        }
+      });
+      document.getElementById('locate-button').addEventListener('click', () => {
+        if (!navigator.geolocation) { setStatus(vgT('msg-location-not-supported')); return; }
+        setStatus(vgT('msg-location-request'));
+        navigator.geolocation.getCurrentPosition(position => {
+          const p = [position.coords.latitude, position.coords.longitude];
+          if (userMarker) userMarker.setLatLng(p); else userMarker = L.marker(p, {icon:userIcon, title:'Your current location'}).addTo(map).bindPopup('Your current location (visible only in this browser)');
+          map.setView(p, 16); userMarker.openPopup(); setStatus(vgT('msg-location-found')); loadBikeParking(true);
+        }, error => setStatus(error.code === 1 ? vgT('msg-location-denied') : vgT('msg-location-denied')), {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
+      });
+      document.getElementById('parking-button').addEventListener('click', function() {
+        parkingVisible = !parkingVisible;
+        if (parkingVisible) { parkingLayer.addTo(map); lastParkingRequest = ''; loadBikeParking(true); this.textContent = vgT('parking-button'); }
+        else { map.removeLayer(parkingLayer); setStatus(''); this.textContent = vgT('parking-show'); }
+      });
+      async function searchPlace() {
+        const query = document.getElementById('place-search').value.trim();
+        if (!query) { setStatus(vgT('msg-map-search-empty')); return; }
+        setStatus(vgT('msg-map-searching'));
+        try {
+          const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ch&addressdetails=1&limit=1&q=' + encodeURIComponent(query);
+          const response = await fetch(url, {headers:{'Accept':'application/json'}});
+          if (!response.ok) throw new Error('lookup failed');
+          const results = await response.json();
+          if (!results.length) { setStatus(vgT('msg-map-search-failed')); return; }
+          const place = results[0], lat = Number(place.lat), lng = Number(place.lon);
+          map.setView([lat,lng], 15);
+          if (userMarker) userMarker.setLatLng([lat,lng]); else userMarker = L.marker([lat,lng], {icon:userIcon, title:'Searched place'}).addTo(map);
+          userMarker.bindPopup(escapeHtml(place.display_name || query)).openPopup();
+          setStatus(vgT('msg-map-search-success')); loadBikeParking(true);
+        } catch (_) { setStatus(vgT('msg-map-search-failed')); }
+      }
+      document.getElementById('search-button').addEventListener('click', searchPlace);
+      document.getElementById('place-search').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchPlace(); } });
+      map.on('moveend', () => loadBikeParking());
+      window.addEventListener('vg-language-changed', () => { document.getElementById('parking-button').textContent = parkingVisible ? vgT('parking-button') : vgT('parking-show'); if (queryParams.get('returnToReport') === '1') setStatus(vgT('msg-choose-location-mode')); });
+      map.fitBounds(switzerlandBounds, {padding:[20,20]});
+      loadBikeParking();
+      const queryParams = new URLSearchParams(location.search);
+      if (queryParams.get('returnToReport') === '1') setStatus('Choose a location on the map.');
+      window.addEventListener('load', () => map.invalidateSize());
+    </script>
+<script>
+const VG_TRANSLATIONS = {"en": {"nav-home": "HOME", "nav-map": "MAP", "nav-report": "REPORT THEFT", "language": "LANGUAGE", "hero-eyebrow": "Bicycle & scooter theft reporting · Switzerland", "hero-title": "YOUR BIKE.<br><span>YOUR NEXT STEP.</span><br>START HERE.", "hero-copy": "Prepare an email about a stolen bicycle or scooter for the relevant cantonal police service.", "hero-report": "PREPARE A THEFT REPORT ↗", "hero-map": "OPEN BIKE PARKING MAP", "hero-note": "For people across Switzerland. Not an official police website.", "start-eyebrow": "START HERE", "start-title": "How can we help?", "start-copy": "Choose what you need. You can check the map first or go straight to the reporting page.", "map-card-title": "Find bike parking", "map-card-copy": "Search Swiss towns and postcodes and explore mapped bicycle parking.", "map-card-link": "OPEN BIKE PARKING MAP →", "report-card-title": "Prepare a theft report", "report-card-copy": "Enter your bike or scooter details and prepare an email for the appropriate cantonal police service.", "report-card-link": "GO TO REPORTING →", "process-eyebrow": "SIMPLE PROCESS", "process-title": "Three steps", "step1-title": "Check the details", "step1-copy": "Open the map and select the exact theft location.", "step2-title": "Prepare your report", "step2-copy": "Enter accurate information about the bicycle or scooter and what happened.", "step3-title": "Contact the authorities", "step3-copy": "Review the details and follow the appropriate cantonal police reporting process.", "notice": "Important: Velo-Guard is not affiliated with the police or any government authority. It prepares an email draft; it does not submit an official police report automatically. For urgent situations, contact emergency services directly.", "footer": "Helping people prepare bicycle and scooter theft reports across Switzerland.", "map-title": "BIKE PARKING MAP", "map-subtitle": "Search a Swiss town or postcode to find mapped bicycle parking.", "search-placeholder": "Enter a Swiss town or postcode (e.g. Cologny or 1223)", "search-button": "SEARCH PLACE", "locate-button": "📍 FIND MY LOCATION", "parking-button": "🚲 HIDE BIKE PARKING", "back-top": "BACK TO TOP ↑", "map-footer": "Velo-Guard · Switzerland", "report-title": "REPORT A STOLEN BIKE OR SCOOTER", "report-intro": "Enter the details of the stolen bicycle or scooter. Choose the exact theft location on the map. This form prepares an email draft; it does not send a report automatically.", "location-label": "REPORT LOCATION", "no-pin": "No pin selected yet. Choose a location in Switzerland on the map.", "vehicle-label": "Vehicle type *", "vehicle-prompt": "Select vehicle type", "brand-label": "Brand *", "color-label": "Colour *", "date-label": "Approximate theft date", "name-label": "Your name (optional)", "email-label": "Your email address *", "details-label": "Other details", "brand-placeholder": "e.g. Trek, Specialized", "color-placeholder": "Vehicle colour", "name-placeholder": "Name", "email-placeholder": "Email address", "details-placeholder": "Distinctive features, lock, circumstances, or other useful details", "prepare-email": "PREPARE POLICE EMAIL", "choose-location": "CHOOSE LOCATION ON MAP", "msg-choose-location": "Please choose a location in Switzerland on the map before preparing the email.", "msg-finding-canton": "Identifying the canton from the selected coordinates…", "msg-no-canton": "I could not confidently identify the canton. Please use the official Swiss authorities directory to find the correct police contact.", "msg-email-ready": "Gmail should open in a new tab with the email draft. Check the recipient and details, then send it yourself. This website does not send the email automatically.", "msg-email-copy": "Email draft text copied. Paste it into Gmail if needed.", "msg-copy-failed": "Copy was unavailable. The draft should already be open in Gmail.", "msg-lookup-error": "Could not identify the canton automatically. Check your internet connection or use the official Swiss authorities directory.", "msg-map-search-empty": "Enter a Swiss town or postcode first.", "msg-map-searching": "Searching Switzerland…", "msg-map-search-failed": "No matching Swiss town or postcode found. Try another spelling or postcode.", "msg-map-search-success": "Location found. Zoom in to view mapped bike parking.", "msg-location-request": "Requesting device location permission…", "msg-location-not-supported": "This browser does not support location services.", "msg-location-denied": "Location permission was denied. You can still search a town or postcode above.", "msg-loading-parking": "Loading mapped bike parking nearby…", "msg-parking-failed": "Bike parking data could not load right now. Try again or move the map; internet access is required.", "msg-zoom": "Zoom in to see mapped bike parking.", "msg-map-pick": "Selected report location", "msg-report-at-location": "Use this location", "option-bicycle": "Bicycle", "option-ebike": "Electric bicycle", "option-escooter": "Electric scooter", "option-scooter": "Scooter", "option-other": "Other", "selected-location": "Selected map location · {lat}, {lng}. Your other form details have been restored.", "draft-note": "Your draft details are kept in this browser while you choose a map location.", "parking-show": "🚲 SHOW BIKE PARKING", "msg-location-found": "Location found.", "msg-parking-count": "{count} mapped bike-parking location(s) loaded.", "msg-choose-location-mode": "Choose the theft location on the map, then select “Use this location” to return to your saved report form.", "msg-email-norecipient": "Gmail should open with the draft. This cantonal police page has no confidently verified general email address; check the official contact page before sending.", "map-status-default": "", "official-contact-link": "Official police contact page", "vehicle-email-label": "Vehicle type"}, "fr": {"nav-home": "ACCUEIL", "nav-map": "CARTE", "nav-report": "SIGNALER UN VOL", "language": "LANGUE", "hero-eyebrow": "Signalement de vols de vélos et trottinettes · Suisse", "hero-title": "VOTRE VÉLO.<br><span>LA PROCHAINE ÉTAPE.</span><br>COMMENCEZ ICI.", "hero-copy": "Préparez un e-mail concernant le vol d’un vélo ou d’une trottinette à destination du service de police cantonal compétent.", "hero-report": "PRÉPARER UN SIGNALEMENT ↗", "hero-map": "OUVRIR LA CARTE DES PARKINGS VÉLO", "hero-note": "Pour toute la Suisse. Site non officiel de la police.", "start-eyebrow": "COMMENCER", "start-title": "Comment pouvons-nous aider ?", "start-copy": "Choisissez une option : consultez la carte ou accédez directement au formulaire.", "map-card-title": "Trouver un parking vélo", "map-card-copy": "Recherchez une localité ou un code postal suisse et consultez les parkings vélo cartographiés.", "map-card-link": "OUVRIR LA CARTE DES PARKINGS →", "report-card-title": "Préparer un signalement", "report-card-copy": "Saisissez les détails du vélo ou de la trottinette et préparez un e-mail pour la police cantonale compétente.", "report-card-link": "ACCÉDER AU FORMULAIRE →", "process-eyebrow": "ÉTAPES SIMPLES", "process-title": "Trois étapes", "step1-title": "Vérifier les informations", "step1-copy": "Ouvrez la carte et choisissez le lieu exact du vol.", "step2-title": "Préparer le signalement", "step2-copy": "Saisissez des informations exactes sur le vélo ou la trottinette et les circonstances.", "step3-title": "Contacter les autorités", "step3-copy": "Vérifiez les informations et suivez la procédure de la police cantonale compétente.", "notice": "Important : Velo-Guard n’est affilié ni à la police ni à une autorité publique. Le site prépare un brouillon d’e-mail ; il ne transmet pas automatiquement un signalement officiel. En cas d’urgence, contactez directement les services d’urgence.", "footer": "Aider chacun à préparer un signalement de vol de vélo ou de trottinette en Suisse.", "map-title": "CARTE DES PARKINGS VÉLO", "map-subtitle": "Recherchez une localité ou un code postal suisse pour trouver les parkings vélo cartographiés.", "search-placeholder": "Localité ou code postal suisse (ex. Cologny ou 1223)", "search-button": "RECHERCHER", "locate-button": "📍 MA POSITION", "parking-button": "🚲 MASQUER LES STATIONNEMENTS", "back-top": "HAUT DE PAGE ↑", "map-footer": "Velo-Guard · Suisse", "report-title": "SIGNALER UN VOL DE VÉLO OU DE TROTTINETTE", "report-intro": "Saisissez les informations du vélo ou de la trottinette volé(e). Choisissez le lieu exact sur la carte. Ce formulaire prépare un e-mail ; il n’envoie pas automatiquement de signalement.", "location-label": "LIEU DU VOL", "no-pin": "Aucun lieu sélectionné. Choisissez un lieu en Suisse sur la carte.", "vehicle-label": "Type de véhicule *", "vehicle-prompt": "Choisir le type de véhicule", "brand-label": "Marque *", "color-label": "Couleur *", "date-label": "Date approximative du vol", "name-label": "Votre nom (facultatif)", "email-label": "Votre adresse e-mail *", "details-label": "Autres détails", "brand-placeholder": "ex. Trek, Specialized", "color-placeholder": "Couleur du véhicule", "name-placeholder": "Nom", "email-placeholder": "Adresse e-mail", "details-placeholder": "Caractéristiques, antivol, circonstances ou autres détails utiles", "prepare-email": "PRÉPARER L’E-MAIL À LA POLICE", "choose-location": "CHOISIR LE LIEU SUR LA CARTE", "msg-choose-location": "Veuillez choisir un lieu en Suisse sur la carte avant de préparer l’e-mail.", "msg-finding-canton": "Identification du canton à partir des coordonnées…", "msg-no-canton": "Impossible d’identifier le canton avec certitude. Consultez l’annuaire officiel des autorités suisses.", "msg-email-ready": "Un brouillon Gmail devrait s’ouvrir dans un nouvel onglet. Vérifiez le destinataire et les détails puis envoyez-le vous-même.", "msg-email-copy": "Texte du brouillon copié. Collez-le dans Gmail si nécessaire.", "msg-copy-failed": "Copie indisponible. Le brouillon devrait déjà être ouvert dans Gmail.", "msg-lookup-error": "Impossible d’identifier automatiquement le canton. Vérifiez votre connexion ou consultez l’annuaire officiel suisse.", "msg-map-search-empty": "Saisissez d’abord une localité ou un code postal suisse.", "msg-map-searching": "Recherche en Suisse…", "msg-map-search-failed": "Aucune localité ou code postal suisse correspondant. Essayez une autre orthographe.", "msg-map-search-success": "Lieu trouvé. Zoomez pour voir les parkings vélo cartographiés.", "msg-location-request": "Demande d’autorisation de localisation…", "msg-location-not-supported": "Ce navigateur ne prend pas en charge la géolocalisation.", "msg-location-denied": "Autorisation refusée. Vous pouvez rechercher une localité ou un code postal ci-dessus.", "msg-loading-parking": "Chargement des stationnements vélo…", "msg-parking-failed": "Impossible de charger les stationnements vélo. Réessayez ou déplacez la carte.", "msg-zoom": "Zoomez pour voir les parkings vélo cartographiés.", "msg-map-pick": "Lieu du signalement sélectionné", "msg-report-at-location": "Utiliser ce lieu", "option-bicycle": "Vélo", "option-ebike": "Vélo électrique", "option-escooter": "Trottinette électrique", "option-scooter": "Trottinette", "option-other": "Autre", "selected-location": "Lieu sélectionné sur la carte · {lat}, {lng}. Les autres détails du formulaire ont été restaurés.", "draft-note": "Les détails du formulaire sont conservés dans ce navigateur pendant le choix du lieu.", "parking-show": "🚲 AFFICHER LES STATIONNEMENTS", "msg-location-found": "Lieu trouvé.", "msg-parking-count": "{count} emplacement(s) de stationnement vélo chargé(s).", "msg-choose-location-mode": "Choisissez le lieu du vol sur la carte, puis sélectionnez « Utiliser ce lieu » pour revenir au formulaire enregistré.", "msg-email-norecipient": "Gmail devrait s’ouvrir avec le brouillon. Cette police cantonale n’a pas d’adresse générale vérifiée ; consultez la page officielle avant l’envoi.", "map-status-default": "", "official-contact-link": "Page officielle des contacts de police", "vehicle-email-label": "Type de véhicule"}, "de": {"nav-home": "STARTSEITE", "nav-map": "KARTE", "nav-report": "DIEBSTAHL MELDEN", "language": "SPRACHE", "hero-eyebrow": "Fahrrad- und Roller-Diebstahl melden · Schweiz", "hero-title": "DEIN BIKE.<br><span>DER NÄCHSTE SCHRITT.</span><br>HIER STARTEN.", "hero-copy": "Erstelle eine E-Mail zu einem Fahrrad- oder Roller-Diebstahl für die zuständige Kantonspolizei.", "hero-report": "DIEBSTAHL MELDEN ↗", "hero-map": "FAHRRADPARKPLATZ-KARTE ÖFFNEN", "hero-note": "Für die ganze Schweiz. Keine offizielle Polizeiseite.", "start-eyebrow": "HIER STARTEN", "start-title": "Wie können wir helfen?", "start-copy": "Wähle eine Option: Öffne die Karte oder gehe direkt zum Meldeformular.", "map-card-title": "Fahrradparkplätze finden", "map-card-copy": "Suche Schweizer Orte oder Postleitzahlen und entdecke eingetragene Fahrradparkplätze.", "map-card-link": "FAHRRADPARKPLATZ-KARTE →", "report-card-title": "Diebstahlmeldung vorbereiten", "report-card-copy": "Gib die Angaben zum Fahrrad oder Roller ein und erstelle eine E-Mail für die zuständige Kantonspolizei.", "report-card-link": "ZUM MELDEFORMULAR →", "process-eyebrow": "EINFACHER ABLAUF", "process-title": "Drei Schritte", "step1-title": "Angaben prüfen", "step1-copy": "Öffne die Karte und wähle den genauen Diebstahlort.", "step2-title": "Meldung vorbereiten", "step2-copy": "Gib genaue Angaben zum Fahrrad oder Roller und zum Vorfall ein.", "step3-title": "Behörden kontaktieren", "step3-copy": "Prüfe die Angaben und folge dem Meldeverfahren der zuständigen Kantonspolizei.", "notice": "Wichtig: Velo-Guard ist nicht mit der Polizei oder einer Behörde verbunden. Die Website erstellt einen E-Mail-Entwurf, übermittelt aber nicht automatisch eine offizielle Polizeimeldung. In dringenden Fällen direkt den Notdienst kontaktieren.", "footer": "Hilfe bei der Vorbereitung von Fahrrad- und Roller-Diebstahlmeldungen in der Schweiz.", "map-title": "FAHRRADPARKPLATZ-KARTE", "map-subtitle": "Suche einen Schweizer Ort oder eine Postleitzahl, um eingetragene Fahrradparkplätze zu finden.", "search-placeholder": "Schweizer Ort oder Postleitzahl (z. B. Cologny oder 1223)", "search-button": "SUCHEN", "locate-button": "📍 MEIN STANDORT", "parking-button": "🚲 FAHRRADPARKPLÄTZE AUSBLENDEN", "back-top": "NACH OBEN ↑", "map-footer": "Velo-Guard · Schweiz", "report-title": "GESTOHLENES FAHRRAD ODER ROLLER MELDEN", "report-intro": "Gib die Angaben zum gestohlenen Fahrrad oder Roller ein. Wähle den genauen Ort auf der Karte. Dieses Formular erstellt einen E-Mail-Entwurf und sendet keine Meldung automatisch.", "location-label": "ORT DES DIEBSTAHLS", "no-pin": "Noch kein Ort ausgewählt. Wähle einen Ort in der Schweiz auf der Karte.", "vehicle-label": "Fahrzeugtyp *", "vehicle-prompt": "Fahrzeugtyp auswählen", "brand-label": "Marke *", "color-label": "Farbe *", "date-label": "Ungefähres Diebstahldatum", "name-label": "Dein Name (optional)", "email-label": "Deine E-Mail-Adresse *", "details-label": "Weitere Angaben", "brand-placeholder": "z. B. Trek, Specialized", "color-placeholder": "Fahrzeugfarbe", "name-placeholder": "Name", "email-placeholder": "E-Mail-Adresse", "details-placeholder": "Besondere Merkmale, Schloss, Umstände oder weitere Angaben", "prepare-email": "POLIZEI-E-MAIL VORBEREITEN", "choose-location": "ORT AUF KARTE WÄHLEN", "msg-choose-location": "Wähle zuerst einen Ort in der Schweiz auf der Karte.", "msg-finding-canton": "Kanton anhand der Koordinaten wird ermittelt…", "msg-no-canton": "Der Kanton konnte nicht sicher erkannt werden. Bitte das offizielle Schweizer Behördenverzeichnis nutzen.", "msg-email-ready": "Ein Gmail-Entwurf sollte sich in einem neuen Tab öffnen. Empfänger und Angaben prüfen und selbst senden.", "msg-email-copy": "E-Mail-Text kopiert. Bei Bedarf in Gmail einfügen.", "msg-copy-failed": "Kopieren nicht möglich. Der Entwurf sollte bereits geöffnet sein.", "msg-lookup-error": "Der Kanton konnte nicht automatisch erkannt werden. Internet prüfen oder das offizielle Verzeichnis verwenden.", "msg-map-search-empty": "Gib zuerst einen Schweizer Ort oder eine Postleitzahl ein.", "msg-map-searching": "Suche in der Schweiz…", "msg-map-search-failed": "Kein passender Schweizer Ort oder keine Postleitzahl gefunden. Andere Schreibweise versuchen.", "msg-map-search-success": "Ort gefunden. Zoome näher heran, um Fahrradparkplätze zu sehen.", "msg-location-request": "Standortberechtigung wird angefragt…", "msg-location-not-supported": "Dieser Browser unterstützt keine Standortbestimmung.", "msg-location-denied": "Standortzugriff verweigert. Suche oben nach Ort oder Postleitzahl.", "msg-loading-parking": "Fahrradparkplätze werden geladen…", "msg-parking-failed": "Fahrradparkplätze konnten nicht geladen werden. Versuche es erneut.", "msg-zoom": "Zoome näher heran, um Fahrradparkplätze zu sehen.", "msg-map-pick": "Ausgewählter Meldeort", "msg-report-at-location": "Diesen Ort verwenden", "option-bicycle": "Fahrrad", "option-ebike": "E-Bike", "option-escooter": "E-Scooter", "option-scooter": "Roller", "option-other": "Andere", "selected-location": "Ort auf der Karte ausgewählt · {lat}, {lng}. Die übrigen Formulardaten wurden wiederhergestellt.", "draft-note": "Deine Formulardaten bleiben in diesem Browser gespeichert, während du den Ort auswählst.", "parking-show": "🚲 FAHRRADPARKPLÄTZE ANZEIGEN", "msg-location-found": "Ort gefunden.", "msg-parking-count": "{count} Fahrradparkplatz/-plätze geladen.", "msg-choose-location-mode": "Wähle den Diebstahlort auf der Karte und dann «Diesen Ort verwenden», um zum gespeicherten Formular zurückzukehren.", "msg-email-norecipient": "Gmail sollte den Entwurf öffnen. Für diese Kantonspolizei ist keine verlässlich bestätigte allgemeine E-Mail-Adresse hinterlegt; prüfe vor dem Senden die offizielle Kontaktseite.", "map-status-default": "", "official-contact-link": "Offizielle Polizeikontaktseite", "vehicle-email-label": "Fahrzeugtyp"}, "it": {"nav-home": "HOME", "nav-map": "MAPPA", "nav-report": "SEGNALA FURTO", "language": "LINGUA", "hero-eyebrow": "Segnalazione di furti di bici e monopattini · Svizzera", "hero-title": "LA TUA BICI.<br><span>IL PROSSIMO PASSO.</span><br>INIZIA QUI.", "hero-copy": "Prepara un’e-mail relativa al furto di una bicicletta o di un monopattino per la polizia cantonale competente.", "hero-report": "PREPARA UNA SEGNALAZIONE ↗", "hero-map": "APRI LA MAPPA DEI PARCHEGGI BICI", "hero-note": "Per tutta la Svizzera. Non è un sito ufficiale della polizia.", "start-eyebrow": "INIZIA QUI", "start-title": "Come possiamo aiutarti?", "start-copy": "Scegli: consulta la mappa oppure vai direttamente alla pagina di segnalazione.", "map-card-title": "Trova parcheggi bici", "map-card-copy": "Cerca località o codici postali svizzeri e consulta i parcheggi per biciclette sulla mappa.", "map-card-link": "APRI LA MAPPA DEI PARCHEGGI →", "report-card-title": "Prepara una segnalazione", "report-card-copy": "Inserisci i dettagli della bici o del monopattino e prepara un’e-mail per la polizia cantonale competente.", "report-card-link": "VAI AL MODULO →", "process-eyebrow": "PROCEDURA SEMPLICE", "process-title": "Tre passaggi", "step1-title": "Controlla i dettagli", "step1-copy": "Apri la mappa e scegli il luogo esatto del furto.", "step2-title": "Prepara la segnalazione", "step2-copy": "Inserisci informazioni precise sulla bicicletta o sul monopattino e sull’accaduto.", "step3-title": "Contatta le autorità", "step3-copy": "Verifica i dettagli e segui la procedura della polizia cantonale competente.", "notice": "Importante: Velo-Guard non è affiliato alla polizia né a enti pubblici. Il sito prepara una bozza e-mail, ma non invia automaticamente una segnalazione ufficiale. In caso di emergenza, contatta direttamente i servizi di emergenza.", "footer": "Aiutare a preparare segnalazioni di furto di biciclette e monopattini in Svizzera.", "map-title": "MAPPA DEI PARCHEGGI BICI", "map-subtitle": "Cerca una località o un codice postale svizzero per trovare i parcheggi bici sulla mappa.", "search-placeholder": "Località o codice postale svizzero (es. Cologny o 1223)", "search-button": "CERCA", "locate-button": "📍 LA MIA POSIZIONE", "parking-button": "🚲 NASCONDI PARCHEGGI BICI", "back-top": "TORNA SU ↑", "map-footer": "Velo-Guard · Svizzera", "report-title": "SEGNALA IL FURTO DI UNA BICICLETTA O DI UN MONOPATTINO", "report-intro": "Inserisci i dettagli della bicicletta o del monopattino rubato. Scegli il luogo esatto sulla mappa. Il modulo prepara una bozza e-mail, ma non invia automaticamente la segnalazione.", "location-label": "LUOGO DEL FURTO", "no-pin": "Nessun luogo selezionato. Scegli un luogo in Svizzera sulla mappa.", "vehicle-label": "Tipo di veicolo *", "vehicle-prompt": "Seleziona il tipo di veicolo", "brand-label": "Marca *", "color-label": "Colore *", "date-label": "Data approssimativa del furto", "name-label": "Nome (facoltativo)", "email-label": "Indirizzo e-mail *", "details-label": "Altri dettagli", "brand-placeholder": "es. Trek, Specialized", "color-placeholder": "Colore del veicolo", "name-placeholder": "Nome", "email-placeholder": "Indirizzo e-mail", "details-placeholder": "Caratteristiche, lucchetto, circostanze o altri dettagli utili", "prepare-email": "PREPARA E-MAIL PER LA POLIZIA", "choose-location": "SCEGLI IL LUOGO SULLA MAPPA", "msg-choose-location": "Scegli un luogo in Svizzera sulla mappa prima di preparare l’e-mail.", "msg-finding-canton": "Identificazione del cantone dalle coordinate…", "msg-no-canton": "Impossibile identificare con certezza il cantone. Consulta l’elenco ufficiale delle autorità svizzere.", "msg-email-ready": "Dovrebbe aprirsi una bozza Gmail in una nuova scheda. Controlla destinatario e dettagli, poi inviala tu.", "msg-email-copy": "Testo della bozza copiato. Incollalo in Gmail se necessario.", "msg-copy-failed": "Copia non disponibile. La bozza dovrebbe essere già aperta.", "msg-lookup-error": "Impossibile identificare automaticamente il cantone. Controlla la connessione o consulta l’elenco ufficiale svizzero.", "msg-map-search-empty": "Inserisci prima una località o un codice postale svizzero.", "msg-map-searching": "Ricerca in Svizzera…", "msg-map-search-failed": "Nessuna località o codice postale corrispondente. Prova un’altra grafia.", "msg-map-search-success": "Località trovata. Ingrandisci per vedere i parcheggi bici sulla mappa.", "msg-location-request": "Richiesta autorizzazione per la posizione…", "msg-location-not-supported": "Questo browser non supporta la geolocalizzazione.", "msg-location-denied": "Autorizzazione negata. Puoi cercare una località o un codice postale qui sopra.", "msg-loading-parking": "Caricamento dei parcheggi bici…", "msg-parking-failed": "Impossibile caricare i parcheggi bici. Riprova o sposta la mappa.", "msg-zoom": "Ingrandisci per vedere i parcheggi bici sulla mappa.", "msg-map-pick": "Luogo della segnalazione selezionato", "msg-report-at-location": "Usa questa posizione", "option-bicycle": "Bicicletta", "option-ebike": "Bicicletta elettrica", "option-escooter": "Monopattino elettrico", "option-scooter": "Monopattino", "option-other": "Altro", "selected-location": "Luogo selezionato sulla mappa · {lat}, {lng}. Gli altri dettagli del modulo sono stati ripristinati.", "draft-note": "I dettagli del modulo restano salvati in questo browser mentre scegli il luogo.", "parking-show": "🚲 MOSTRA PARCHEGGI BICI", "msg-location-found": "Luogo trovato.", "msg-parking-count": "{count} parcheggio/i bici caricato/i.", "msg-choose-location-mode": "Scegli il luogo del furto sulla mappa, poi seleziona «Usa questa posizione» per tornare al modulo salvato.", "msg-email-norecipient": "Gmail dovrebbe aprire la bozza. Non è disponibile un indirizzo generale verificato per questa polizia cantonale; controlla la pagina ufficiale prima di inviare.", "map-status-default": "", "official-contact-link": "Pagina ufficiale dei contatti della polizia", "vehicle-email-label": "Tipo di veicolo"}};
+Object.assign(VG_TRANSLATIONS.en, {
+  "msg-water-checking":"Checking that this point is on land…",
+  "msg-water-blocked":"This point appears to be in a body of water. Please choose a location on land.",
+  "msg-water-check-failed":"The map data could not verify this location. Please try again or choose another point on land."
+});
+Object.assign(VG_TRANSLATIONS.fr, {
+  "msg-water-checking":"Vérification que ce point se trouve sur la terre ferme…",
+  "msg-water-blocked":"Ce point semble se trouver dans un plan d’eau. Choisissez un emplacement sur la terre ferme.",
+  "msg-water-check-failed":"Impossible de vérifier cet emplacement avec les données cartographiques. Réessayez ou choisissez un autre point sur la terre ferme."
+});
+Object.assign(VG_TRANSLATIONS.de, {
+  "msg-water-checking":"Es wird geprüft, ob dieser Punkt an Land liegt…",
+  "msg-water-blocked":"Dieser Punkt liegt offenbar in einem Gewässer. Bitte einen Ort an Land wählen.",
+  "msg-water-check-failed":"Dieser Ort konnte anhand der Kartendaten nicht überprüft werden. Bitte erneut versuchen oder einen anderen Punkt an Land wählen."
+});
+Object.assign(VG_TRANSLATIONS.it, {
+  "msg-water-checking":"Verifica che il punto si trovi sulla terraferma…",
+  "msg-water-blocked":"Questo punto sembra trovarsi in uno specchio d’acqua. Scegli una posizione sulla terraferma.",
+  "msg-water-check-failed":"Impossibile verificare questa posizione con i dati cartografici. Riprova o scegli un altro punto sulla terraferma."
+});
+
+function vgLanguage() { return localStorage.getItem('vgLanguage') || document.documentElement.lang || 'en'; }
+function vgT(key) { const lang = vgLanguage(); return (VG_TRANSLATIONS[lang] && VG_TRANSLATIONS[lang][key]) || VG_TRANSLATIONS.en[key] || key; }
+function vgApplyLanguage(lang) {
+  if (!VG_TRANSLATIONS[lang]) lang = 'en';
+  localStorage.setItem('vgLanguage', lang);
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = (VG_TRANSLATIONS[lang] || {})[key] || VG_TRANSLATIONS.en[key];
+    if (val !== undefined) el.innerHTML = val;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    const val = (VG_TRANSLATIONS[lang] || {})[key] || VG_TRANSLATIONS.en[key];
+    if (val !== undefined) el.placeholder = val;
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    const key = el.getAttribute('data-i18n-aria');
+    const val = (VG_TRANSLATIONS[lang] || {})[key] || VG_TRANSLATIONS.en[key];
+    if (val !== undefined) el.setAttribute('aria-label', val);
+  });
+  const selector = document.getElementById('language-select');
+  if (selector && selector.value !== lang) selector.value = lang;
+  window.dispatchEvent(new CustomEvent('vg-language-changed', { detail: { lang } }));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const selector = document.getElementById('language-select');
+  if (selector) selector.addEventListener('change', () => vgApplyLanguage(selector.value));
+  vgApplyLanguage(vgLanguage());
+});
+</script>
+</body>
+</html>
