@@ -9,6 +9,8 @@ Features
 
 - Report preparation for local police
 
+- Green locations are low risk, yellow are mildly insecure, and red are high risk
+
 - Live website
 (https://velo-guard.velo-guard.workers.dev/)
 
