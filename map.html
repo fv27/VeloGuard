@@ -358,9 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
  }
 
  function riskLevel(count) {
-   if (count >= 4) return { color: '#ff2020', key: 'risk-high' };    // 4+ reports  = red
-   if (count >= 2) return { color: '#ffc107', key: 'risk-medium' };  // 2-3 reports = yellow
-   return { color: '#22c55e', key: 'risk-low' };                     // 1 report    = green
+   if (count >= 3) return { color: '#ff2020', key: 'risk-high' };    // 3+ reports  = red
+   if (count >= 1) return { color: '#ffc107', key: 'risk-medium' };  // 1-2 reports = yellow
+   return { color: '#22c55e', key: 'risk-low' };                     // 0 reports   = green
  }
 
  async function loadTheftReports() {
@@ -423,9 +423,9 @@ document.addEventListener('DOMContentLoaded', () => {
  legend.update = function () {
    const dot = color => '<span class="risk-dot" style="background:' + color + '"></span>';
    this._div.innerHTML = '<strong>' + escapeHtml(vgT('legend-title')) + '</strong>' +
-     dot('#22c55e') + '1 · ' + escapeHtml(vgT('risk-low')) + '<br>' +
-     dot('#ffc107') + '2–3 · ' + escapeHtml(vgT('risk-medium')) + '<br>' +
-     dot('#ff2020') + '4+ · ' + escapeHtml(vgT('risk-high')) +
+     dot('#22c55e') + '0 · ' + escapeHtml(vgT('risk-low')) + '<br>' +
+     dot('#ffc107') + '1–2 · ' + escapeHtml(vgT('risk-medium')) + '<br>' +
+     dot('#ff2020') + '3+ · ' + escapeHtml(vgT('risk-high')) +
      '<div style="margin-top:6px;color:#aaa;max-width:190px;line-height:1.5">' + escapeHtml(vgT('legend-racks')) + '</div>';
  };
  legend.addTo(map);
@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
    parkingLayer.clearLayers();
    parkingItems.forEach(({ lat, lng, tags }) => {
      const nearby = reportsNear(lat, lng);
-     const risk = riskLevel(nearby);   // 0-1 = green, 2-3 = yellow, 4+ = red
+     const risk = riskLevel(nearby);   // 0 = green, 1-2 = yellow, 3+ = red
      const icon = L.divIcon({ className: "", html: '<div class="parking-marker" style="background:' + risk.color + '"></div>', iconSize: [14,14], iconAnchor: [7,7] });
      const name = tags.name || tags.operator || 'Bike parking';
      const details = [tags.capacity ? 'Capacity: ' + tags.capacity : '', tags.covered === 'yes' ? 'Covered parking' : '', tags.bicycle_parking ? 'Type: ' + tags.bicycle_parking.replaceAll('_', ' ') : ''].filter(Boolean).join(' · ');
