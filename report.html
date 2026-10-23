@@ -39,6 +39,10 @@ form{background:var(--panel);border:1px solid #2b2b2b;border-radius:16px;padding
 .button.map-add{background:#1f8f4e}
 .actions-note{max-width:620px;margin:16px auto 0;color:#bbb;font-size:13px;line-height:1.7;text-align:center}
 .actions-note strong{color:#fff}
+
+.false-report{margin:10px auto 0;max-width:760px;font-size:12px;line-height:1.6;color:#8d8d8d;text-align:center}
+.false-report a{color:#ff7777;font-weight:bold;word-break:break-all}
+.report-footer{padding:26px 16px;color:#777;text-align:center;font-size:12px;border-top:1px solid #202020}
 </style>
 </head>
 <body>
@@ -89,6 +93,7 @@ form{background:var(--panel);border:1px solid #2b2b2b;border-radius:16px;padding
 <div id="status" role="status"></div>
 </form>
 </main>
+<footer class="report-footer"><span>© Velo-Guard · Switzerland</span><p class="false-report" data-i18n="false-report">Made a false report or a mistake? Email <a href="mailto:snowypenguiner@gmail.com">snowypenguiner@gmail.com</a> and we will remove it.</p></footer>
 
 <!-- ===================== TRANSLATIONS (EN / FR / DE / IT) ===================== -->
 <script>
@@ -200,6 +205,13 @@ Object.assign(VG_TRANSLATIONS.it, {
  "email-label":"Il tuo indirizzo e-mail (necessario per l’e-mail alla polizia)",
  "msg-report-save-failed":"Non è stato possibile aggiungere la segnalazione alla mappa. Riprova."
 });
+
+
+// Footer: contact for false reports
+Object.assign(VG_TRANSLATIONS.en, {"false-report": "Made a false report or a mistake? Email <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> and we will remove it."});
+Object.assign(VG_TRANSLATIONS.fr, {"false-report": "Vous avez fait un faux signalement ou une erreur ? Écrivez à <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> et nous le supprimerons."});
+Object.assign(VG_TRANSLATIONS.de, {"false-report": "Falsche Meldung oder ein Fehler? Schreib an <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> und wir entfernen sie."});
+Object.assign(VG_TRANSLATIONS.it, {"false-report": "Hai fatto una segnalazione falsa o un errore? Scrivi a <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> e la rimuoveremo."});
 
 function vgLanguage() { try { return localStorage.getItem('vgLanguage') || document.documentElement.lang || 'en'; } catch (_) { return document.documentElement.lang || 'en'; } }
 function vgT(key) { const lang = vgLanguage(); return (VG_TRANSLATIONS[lang] && VG_TRANSLATIONS[lang][key]) || VG_TRANSLATIONS.en[key] || key; }
