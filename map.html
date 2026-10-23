@@ -217,7 +217,10 @@
        .lang-wrap { display:flex; align-items:center; gap:7px; }
        .lang-label { color:#aaa; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
        @media (max-width:700px) { .language-select { padding:7px 5px; font-size:11px; } }
-   </style>
+   
+.false-report{margin:10px auto 0;max-width:760px;font-size:12px;line-height:1.6;color:#8d8d8d;text-align:center}
+.false-report a{color:#ff7777;font-weight:bold;word-break:break-all}
+</style>
 </head>
 
 <body id="home">
@@ -252,7 +255,7 @@
        <div id="bike-map" aria-label="Map of bicycle parking and report locations"></div>
    </main>
 
-   <footer data-i18n="map-footer">Velo-Guard · Switzerland</footer>
+   <footer><span data-i18n="map-footer">Velo-Guard · Switzerland</span><p class="false-report" data-i18n="false-report">Made a false report or a mistake? Email <a href="mailto:snowypenguiner@gmail.com">snowypenguiner@gmail.com</a> and we will remove it.</p></footer>
 
 <!-- ===================== TRANSLATIONS (EN / FR / DE / IT) ===================== -->
 <script>
@@ -263,6 +266,13 @@ Object.assign(VG_TRANSLATIONS.en, {"legend-racks":"Small dots are bike racks: gr
 Object.assign(VG_TRANSLATIONS.fr, {"legend-racks":"Les petits points sont des parkings vélo : verts s’ils sont sûrs, puis jaunes ou rouges si des vols sont signalés à moins de 100 m.","risk-low":"Risque faible","risk-medium":"Peu sûr","risk-high":"Risque élevé","risk-count":"{count} vol(s) signalé(s) ici","legend-title":"Vols signalés","msg-reports-failed":"Impossible de charger les vols signalés pour le moment."});
 Object.assign(VG_TRANSLATIONS.de, {"legend-racks":"Kleine Punkte sind Veloständer: grün wenn sicher, gelb oder rot wenn im Umkreis von 100 m Diebstähle gemeldet wurden.","risk-low":"Geringes Risiko","risk-medium":"Etwas unsicher","risk-high":"Hohes Risiko","risk-count":"{count} Diebstahlmeldung(en) hier","legend-title":"Diebstahlmeldungen","msg-reports-failed":"Diebstahlmeldungen konnten gerade nicht geladen werden."});
 Object.assign(VG_TRANSLATIONS.it, {"legend-racks":"I puntini sono parcheggi bici: verdi se sicuri, gialli o rossi se entro 100 m vengono segnalati furti.","risk-low":"Rischio basso","risk-medium":"Poco sicuro","risk-high":"Rischio elevato","risk-count":"{count} furto/i segnalato/i qui","legend-title":"Furti segnalati","msg-reports-failed":"Impossibile caricare i furti segnalati al momento."});
+
+
+// Footer: contact for false reports
+Object.assign(VG_TRANSLATIONS.en, {"false-report": "Made a false report or a mistake? Email <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> and we will remove it."});
+Object.assign(VG_TRANSLATIONS.fr, {"false-report": "Vous avez fait un faux signalement ou une erreur ? Écrivez à <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> et nous le supprimerons."});
+Object.assign(VG_TRANSLATIONS.de, {"false-report": "Falsche Meldung oder ein Fehler? Schreib an <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> und wir entfernen sie."});
+Object.assign(VG_TRANSLATIONS.it, {"false-report": "Hai fatto una segnalazione falsa o un errore? Scrivi a <a href=\"mailto:snowypenguiner@gmail.com\">snowypenguiner@gmail.com</a> e la rimuoveremo."});
 
 function vgLanguage() { try { return localStorage.getItem('vgLanguage') || document.documentElement.lang || 'en'; } catch (_) { return document.documentElement.lang || 'en'; } }
 function vgT(key) { const lang = vgLanguage(); return (VG_TRANSLATIONS[lang] && VG_TRANSLATIONS[lang][key]) || VG_TRANSLATIONS.en[key] || key; }
